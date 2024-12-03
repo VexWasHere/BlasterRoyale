@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rotating Control Box</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            cursor: none; /* Hide the cursor */
+        }
+        canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        let mouseX = canvas.width / 2;
+        let mouseY = canvas.height / 2;
+        let boxX = mouseX;
+        let boxY = mouseY;
+        const boxSize = 50;
+        const followSpeed = 0.05; // Slower following speed
+        const maxMouseSpeed = 10; // Maximum speed for mouse movement
+        const maxBoxSpeed = 5; // Maximum speed for box movement
+        let angle = 0; // Rotation angle of the box
+
+        // Control mode: true for mouse, false for keyboard
+        let useMouseControl = true;
+
+        // Toggle function
+        function toggleControl() {
+            useMouseControl = !useMouseControl;
+        }
+
+        // Event listener for keypress to toggle control
+        window.addEventListener('keydown', (event) => {
+            if (event.key === ' ') { // Space bar to toggle control
+                toggleControl();
+            }
+        });
+
+        // Mouse movement handling
+        canvas.addEventListener('mousemove', (event) => {
+            if (useMouseControl) {
+                const newMouseX = event.clientX;
+                const newMouseY = event.clientY;
+
+                // Calculate the distance moved by the mouse
+                const dx = newMouseX - mouseX;
+                const dy = newMouseY - mouseY;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+
+                // Limit the mouse movement to maxMouseSpeed
+                if (distance > maxMouseSpeed) {
+                    const ratio = maxMouseSpeed / distance;
+                    mouseX += dx * ratio;
+                    mouseY += dy * ratio;
+                } else {
+                    mouseX = newMouseX;
+                    mouseY = newMouseY;
+                }
+            }
+        });
+
+        // Arrow key states
+        const keyState = {
+            ArrowUp: false,
+            ArrowDown: false,
+            ArrowLeft: false,
+            ArrowRight: false
+        };
+
+        // Keydown event to track which keys are pressed
+        window.addEventListener('keydown', (event) => {
+            if (!useMouseControl) {
+                if (keyState.hasOwnProperty(event.key)) {
+                    keyState[event.key] = true;
+                }
+            }
+        });
+
+        // Keyup event to track which keys are released
+        window.addEventListener('keyup', (event) => {
+            if (!useMouseControl) {
+                if (keyState.hasOwnProperty(event.key)) {
+                    keyState[event.key] = false;
+                }
+            }
+        });
+
+        function animate() {
+            // Calculate the difference
+            const dX = mouseX - boxX;
+            const dY = mouseY - boxY;
+
+            // Smoothly move the box towards the mouse position with a lag
+            if (useMouseControl) {
+                const distanceToMouse = Math.sqrt(dX * dX + dY * dY);
+                if (distanceToMouse > maxBoxSpeed) {
+                    const ratio = maxBoxSpeed / distanceToMouse;
+                    boxX += dX * ratio;
+                    boxY += dY * ratio;
+                } else {
+                    boxX += dX * followSpeed;
+                    boxY += dY * followSpeed;
+                }
+
+                // Calculate the angle for rotation based on mouse position
+                angle = Math.atan2(dY, dX);
+            } else {
+                // Calculate desired velocity based on key states
+                let desiredVelocityX = 0;
+                let desiredVelocityY = 0;
+
+                if (keyState.ArrowUp) {
+                    desiredVelocityY -= maxBoxSpeed; // Move up
+                }
+                if (keyState.ArrowDown) {
+                    desiredVelocityY += maxBoxSpeed; // Move down
+                }
+                if (keyState.ArrowLeft) {
+                    desiredVelocityX -= maxBoxSpeed; // Move left
+                }
+                if (keyState.ArrowRight) {
+                    desiredVelocityX += maxBoxSpeed; // Move right
+                }
+
+                // Normalize the velocity vector if it's too fast
+                const desiredVelocityMagnitude = Math.sqrt(desiredVelocityX * desiredVelocityX + desiredVelocityY * desiredVelocityY);
+                if (desiredVelocityMagnitude > maxBoxSpeed) {
+                    const ratio = maxBoxSpeed / desiredVelocityMagnitude;
+                    desiredVelocityX *= ratio;
+                    desiredVelocityY *= ratio;
+                }
+
+                // Smoothly move the box towards the desired velocity
+                boxX += desiredVelocityX * followSpeed;
+                boxY += desiredVelocityY * followSpeed;
+
+                // Calculate the angle for rotation based on key direction
+                if (desiredVelocityMagnitude > 0) {
+                    angle = Math.atan2(desiredVelocityY, desiredVelocityX);
+                }
+            }
+
+            // Clear the canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Save the current context
+            ctx.save();
+            // Translate to the box's position
+            ctx.translate(boxX, boxY);
+            // Rotate the context
+            ctx.rotate(angle);
+            // Draw the box centered at (0, 0)
+            ctx.fillStyle = 'blue';
+            ctx.fillRect(-boxSize / 2, -boxSize / 2, boxSize, boxSize);
+            // Restore the context to its original state
+            ctx.restore();
+
+            requestAnimationFrame(animate);
+        }
+
+        animate();
+    </script>
+</body>
+</html>

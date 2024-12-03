@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rotating Control Box</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            cursor: none; /* Hide the cursor */
+        }
+        canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+    </style>
+</head>
+<body>
+    
+    <canvas id="canvas"></canvas>
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        let mouseX = canvas.width / 2;
+        let mouseY = canvas.height / 2;
+        let boxX = mouseX;
+        let boxY = mouseY;
+        const boxSize = 50;
+        const followSpeed = 0.05; // Slower following speed
+        const maxMouseSpeed = 10; // Maximum speed for mouse movement
+        const maxBoxSpeed = 5; // Maximum speed for box movement
+        let angle = 0; // Rotation angle of the box
+
+        // Bullet properties
+        const bullets = [];
+        const bulletSpeed = 5;
+
+        // Mouse movement handling
+        canvas.addEventListener('mousemove', (event) => {
+            const newMouseX = event.clientX;
+            const newMouseY = event.clientY;
+
+            // Calculate the distance moved by the mouse
+            const dx = newMouseX - mouseX;
+            const dy = newMouseY - mouseY;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+
+            // Limit the mouse movement to maxMouseSpeed
+            if (distance > maxMouseSpeed) {
+                const ratio = maxMouseSpeed / distance;
+                mouseX += dx * ratio;
+                mouseY += dy * ratio;
+            } else {
+                mouseX = newMouseX;
+                mouseY = newMouseY;
+            }
+        });
+
+        // Fire bullet on mouse click
+        canvas.addEventListener('click', (event) => {
+            const rect = canvas.getBoundingClientRect();
+            const clickX = event.clientX - rect.left;
+            const clickY = event.clientY - rect.top;
+
+            // Calculate angle to mouse click position
+            const bulletAngle = Math.atan2(clickY - boxY, clickX - boxX);
+
+            // Create a bullet object
+            const bullet = {
+                x: boxX,
+                y: boxY,
+                angle: bulletAngle,
+                update: function() {
+                    this.x += Math.cos(this.angle) * bulletSpeed;
+                    this.y += Math.sin(this.angle) * bulletSpeed;
+                }
+            };
+            bullets.push(bullet);
+        });
+
+        function animate() {
+            // Calculate the difference
+            const dX = mouseX - boxX;
+            const dY = mouseY - boxY;
+
+            // Smoothly move the box towards the mouse position with a lag
+            const distanceToMouse = Math.sqrt(dX * dX + dY * dY);
+            if (distanceToMouse > maxBoxSpeed) {
+                const ratio = maxBoxSpeed / distanceToMouse;
+                boxX += dX * ratio;
+                boxY += dY * ratio;
+            } else {
+                boxX += dX * followSpeed;
+                boxY += dY * followSpeed;
+            }
+
+            // Calculate the angle for rotation based on mouse position
+            angle = Math.atan2(dY, dX);
+
+            // Clear the canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw bullets
+            ctx.fillStyle = 'red';
+            bullets.forEach((bullet, index) => {
+                bullet.update();
+                ctx.beginPath();
+                ctx.arc(bullet.x, bullet.y, 5, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Remove bullet if it goes off-screen
+                if (bullet.x < 0 || bullet.x > canvas.width || bullet.y < 0 || bullet.y > canvas.height) {
+                    bullets.splice(index, 1);
+                }
+            });
+
+            // Save the current context
+            ctx.save();
+            // Translate to the box's position
+            ctx.translate(boxX, boxY);
+            // Rotate the context
+            ctx.rotate(angle);
+            // Draw the box centered at (0, 0)
+            ctx.fillStyle = 'blue';
+            ctx.fillRect(-boxSize / 2, -boxSize / 2, boxSize, boxSize);
+            // Restore the context to its original state
+            ctx.restore();
+
+            requestAnimationFrame(animate);
+        }
+
+        animate();
+    </script>
+</body>
+</html>
